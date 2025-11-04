@@ -1,5 +1,7 @@
 import { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   // State management for multi-step flow
@@ -20,24 +22,42 @@ const Index = () => {
     }
   };
 
-  // Handle form submission
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const [aiResponse, setAiResponse] = useState("");
+  const { toast } = useToast();
+
+  // Handle form submission and call Gemini API
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (userName && userEmail && userContact && userAge) {
       setCurrentStep("response");
       setIsTyping(true);
       
-      // Simulate typing animation
-      setTimeout(() => {
-        setIsTyping(false);
+      try {
+        const { data, error } = await supabase.functions.invoke('chat-with-gemini', {
+          body: { question: userQuestion, userName }
+        });
+
+        if (error) throw error;
+
+        setAiResponse(data.answer);
         setShowResponse(true);
-      }, 2000);
+      } catch (error) {
+        console.error('Error calling Gemini API:', error);
+        toast({
+          title: "Error",
+          description: "Failed to get response from AI. Please try again.",
+          variant: "destructive",
+        });
+        setCurrentStep("form");
+      } finally {
+        setIsTyping(false);
+      }
     }
   };
 
-  // Generate AI response
+  // Generate AI response display
   const generateResponse = () => {
-    return `Hey ${userName}! Thanks for sharing 💐\n\nI'm so glad you reached out. Here's my thoughtful answer to your question:\n\n"${userQuestion}"\n\nBased on what you've asked, I'd say this is a wonderful question that shows you're really thinking deeply about this topic. The best approach would be to take it step by step and remember that every journey starts with a single step. You've got this! 🌟\n\nIf you need any more help, I'm always here for you! 💕`;
+    return `Hey ${userName}! Thanks for sharing 💐\n\n${aiResponse}\n\nIf you need any more help, I'm always here for you! 💕`;
   };
 
   return (
@@ -90,7 +110,7 @@ const Index = () => {
                     color: "hsl(280, 10%, 40%)"
                   }}
                 >
-                  I'm your friendly AI assistant, here to help with love & care! 💖
+                  I'm iSource AI Answer Chat Bot, here to help with accurate answers! 💖
                 </p>
 
                 {/* Question Input Form */}
@@ -335,7 +355,7 @@ const Index = () => {
                           marginBottom: "0.5rem"
                         }}
                       >
-                        Lovable AI Assistant
+                        iSource AI Answer Chat Bot
                       </h5>
                       <small style={{ color: "hsl(280, 10%, 50%)" }}>
                         Just now
